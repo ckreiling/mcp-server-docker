@@ -136,6 +136,33 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
 </details>
 
+<details>
+  <summary>Docker-based Configuration</summary>
+
+Run `docker build -t mcp-server-docker:latest -f Dockerfile .`
+
+And then use this config:
+```
+"mcpServers": {
+  "mcp-server-docker": {
+    "command": "docker",
+    "args": [
+      "run",
+      "-i",
+      "--rm",
+      "-e",
+      "DOCKER_HOST",
+      "mcp-server-docker:latest"
+    ],
+    "env": {
+      "DOCKER_HOST": "tcp://<YOUR LOCAL IP>:2375"
+    }
+  }
+}
+```
+
+</details>
+
 ## Development
 
 Prefer using Devbox to configure your development environment.
