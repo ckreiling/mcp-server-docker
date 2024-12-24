@@ -1,24 +1,30 @@
-# Docker MCP server
+# 🐋 Docker MCP server
 
-An MCP server for Docker
+An MCP server for managing Docker with natural language!
 
-## Components
+## 🪩 What can it do?
 
-### Resources
+- 🚀 Compose containers with natural language
+- 🔍 Introspect & debug running containers
+- 📀 Manage persistent data with Docker volumes
 
-The server implements a couple resources for every container:
+## ❓ Who is this for?
 
-- Stats: CPU, memory, etc. for a container
-- Logs: tail some logs from a container
+- Server administrators: connect to remote Docker engines for e.g. managing a
+  public-facing website.
+- Tinkerers: spin up containers locally, without running a single command
+  yourself.
 
-### Prompts
+## 🧱 Components
 
-#### `docker_compose`
+### 📝 Prompts
+
+#### 🎻 `docker_compose`
 
 Use natural language to compose containers.
 
-Simply provide a project name and a description of the containers comprising the
-project, and the LLM will come up with a deployment plan.
+Provide a Project Name, and a description of desired containers, and let the LLM
+do the rest.
 
 This prompt instructs the LLM to enter a `plan+apply` loop. Your interaction
 with the LLM will involve the following steps:
@@ -26,9 +32,8 @@ with the LLM will involve the following steps:
 1. You give the LLM instructions for which containers to bring up
 2. The LLM calculates a concise natural language plan and presents it to you
 3. You either:
-
-- Apply the plan
-- Provide the LLM feedback, and the LLM recalculates the plan
+   - Apply the plan
+   - Provide the LLM feedback, and the LLM recalculates the plan
 
 ##### Examples
 
@@ -45,7 +50,14 @@ any containers, volumes, and networks created with the given project `name`.
 This is mainly useful for cleaning up, in-case you lose a chat that was
 responsible for many containers.
 
-### Tools
+### 📔 Resources
+
+The server implements a couple resources for every container:
+
+- Stats: CPU, memory, etc. for a container
+- Logs: tail some logs from a container
+
+### 🔨 Tools
 
 #### Containers
 
@@ -78,7 +90,7 @@ responsible for many containers.
 - `create_volume`
 - `remove_volume`
 
-## Disclaimers
+## 🚧 Disclaimers
 
 ### Sensitive Data
 
@@ -101,13 +113,13 @@ For safety reasons, this MCP server doesn't support sensitive Docker options
 like `--privileged` or `--cap-add/--cap-drop`. If these features are of interest
 to you, file an issue on this repository with your use-case.
 
-## Configuration
+## 🛠️ Configuration
 
 This server uses the Python Docker SDK's `from_env` method. For configuration
 details, see
 [the documentation](https://docker-py.readthedocs.io/en/stable/client.html#docker.client.from_env).
 
-## Quickstart
+## 🏎️ Quickstart
 
 ### Install
 
@@ -136,7 +148,7 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
 </details>
 
-## Development
+## 💻 Development
 
 Prefer using Devbox to configure your development environment.
 

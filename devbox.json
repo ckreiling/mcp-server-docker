@@ -6,7 +6,7 @@
     "scripts": {
       "python-lint": ["uv run ruff check src/**/*.py --format"],
       "prettier-format": [
-        "npx --yes prettier --write --prose-wrap=always *.json README.md"
+        "npx --yes prettier --write --prose-wrap=always *.json *.md"
       ],
       "prettier-check": ["npx --yes prettier --check *.json *.md"],
       "mcp-run": ["uv run mcp-server-docker"],
