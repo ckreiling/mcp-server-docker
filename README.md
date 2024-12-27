@@ -51,6 +51,30 @@ On Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
 </details>
 
+<details>
+  <summary>Docker-based Configuration</summary>
+
+Run `docker build -t mcp-server-docker:latest -f Dockerfile .`
+
+And then use this config:
+```
+"mcpServers": {
+  "mcp-server-docker": {
+    "command": "docker",
+    "args": [
+      "run",
+      "-i",
+      "--rm",
+      "-v",
+      "/var/run/docker.sock:/var/run/docker.sock",
+      "mcp-server-docker:latest"
+    ]
+  }
+}
+```
+
+</details>
+
 ## 📝 Prompts
 
 ### 🎻 `docker_compose`
