@@ -28,9 +28,11 @@ from .input_schemas import (
     RemoveNetworkInput,
     RemoveVolumeInput,
 )
+from .settings import ServerSettings
 
 app = Server("docker-server")
-docker_client = docker.from_env()
+_docker: docker.DockerClient
+_server_settings: ServerSettings
 
 
 @app.list_prompts()
@@ -60,11 +62,11 @@ async def get_prompt(
     if name == "docker_compose":
         input = DockerComposePromptInput.model_validate(arguments)
         project_label = f"mcp-server-docker.project={input.name}"
-        containers: list[Container] = docker_client.containers.list(
+        containers: list[Container] = _docker.containers.list(
             filters={"label": project_label}
         )
-        volumes = docker_client.volumes.list(filters={"label": project_label})
-        networks = docker_client.networks.list(filters={"label": project_label})
+        volumes = _docker.volumes.list(filters={"label": project_label})
+        networks = _docker.networks.list(filters={"label": project_label})
 
         return types.GetPromptResult(
             messages=[
@@ -190,7 +192,7 @@ The following are guidelines for you to follow when interacting with Docker Tool
 @app.list_resources()
 async def list_resources() -> list[types.Resource]:
     resources = []
-    for container in docker_client.containers.list():
+    for container in _docker.containers.list():
         resources.extend(
             [
                 types.Resource(
@@ -221,7 +223,7 @@ async def read_resource(uri: AnyUrl) -> str:
 
     container_id = parts[3]
     resource_type = parts[4]
-    container = docker_client.containers.get(container_id)
+    container = _docker.containers.get(container_id)
 
     if resource_type == "logs":
         logs = container.logs(tail=100).decode("utf-8")
@@ -348,7 +350,7 @@ async def call_tool(
     try:
         if name == "list_containers":
             args = ListContainersInput.model_validate(arguments)
-            containers = docker_client.containers.list(**args.model_dump())
+            containers = _docker.containers.list(**args.model_dump())
             result = [
                 {
                     "id": c.id,
@@ -361,7 +363,7 @@ async def call_tool(
 
         elif name == "create_container":
             args = CreateContainerInput.model_validate(arguments)
-            container = docker_client.containers.create(**args.model_dump())
+            container = _docker.containers.create(**args.model_dump())
             result = {
                 "status": container.status,
                 "id": container.id,
@@ -370,7 +372,7 @@ async def call_tool(
 
         elif name == "run_container":
             args = CreateContainerInput.model_validate(arguments)
-            container = docker_client.containers.run(**args.model_dump())
+            container = _docker.containers.run(**args.model_dump())
             result = {
                 "status": container.status,
                 "id": container.id,
@@ -380,12 +382,12 @@ async def call_tool(
         elif name == "recreate_container":
             args = RecreateContainerInput.model_validate(arguments)
 
-            container = docker_client.containers.get(args.resolved_container_id)
+            container = _docker.containers.get(args.resolved_container_id)
             container.stop()
             container.remove()
 
             run_args = CreateContainerInput.model_validate(arguments)
-            container = docker_client.containers.run(**run_args.model_dump())
+            container = _docker.containers.run(**run_args.model_dump())
             result = {
                 "status": container.status,
                 "id": container.id,
@@ -394,46 +396,46 @@ async def call_tool(
 
         elif name == "start_container":
             args = ContainerActionInput.model_validate(arguments)
-            container = docker_client.containers.get(args.container_id)
+            container = _docker.containers.get(args.container_id)
             container.start()
             result = {"status": container.status, "id": container.id}
 
         elif name == "stop_container":
             args = ContainerActionInput.model_validate(arguments)
-            container = docker_client.containers.get(args.container_id)
+            container = _docker.containers.get(args.container_id)
             container.stop()
             result = {"status": container.status, "id": container.id}
 
         elif name == "remove_container":
             args = RemoveContainerInput.model_validate(arguments)
-            container = docker_client.containers.get(args.container_id)
+            container = _docker.containers.get(args.container_id)
             container.remove(force=args.force)
             result = {"status": "removed", "id": args.container_id}
 
         elif name == "fetch_container_logs":
             args = FetchContainerLogsInput.model_validate(arguments)
-            container = docker_client.containers.get(args.container_id)
+            container = _docker.containers.get(args.container_id)
             logs = container.logs(tail=args.tail).decode("utf-8")
             result = {"logs": logs.split("\n")}
 
         elif name == "list_images":
             args = ListImagesInput.model_validate(arguments)
 
-            images = docker_client.images.list(**args.model_dump())
+            images = _docker.images.list(**args.model_dump())
             result = [{"id": img.id, "tags": img.tags} for img in images]
 
         elif name == "pull_image":
             args = PullPushImageInput.model_validate(arguments)
             model_dump = args.model_dump()
             repository = model_dump.pop("repository")
-            image = docker_client.images.pull(repository, **model_dump)
+            image = _docker.images.pull(repository, **model_dump)
             result = {"id": image.id, "tags": image.tags}
 
         elif name == "push_image":
             args = PullPushImageInput.model_validate(arguments)
             model_dump = args.model_dump()
             repository = model_dump.pop("repository")
-            docker_client.images.push(repository, **model_dump)
+            _docker.images.push(repository, **model_dump)
             result = {
                 "status": "pushed",
                 "repository": args.repository,
@@ -442,17 +444,17 @@ async def call_tool(
 
         elif name == "build_image":
             args = BuildImageInput.model_validate(arguments)
-            image, logs = docker_client.images.build(**args.model_dump())
+            image, logs = _docker.images.build(**args.model_dump())
             result = {"id": image.id, "tags": image.tags, "logs": list(logs)}
 
         elif name == "remove_image":
             args = RemoveImageInput.model_validate(arguments)
-            docker_client.images.remove(**args.model_dump())
+            _docker.images.remove(**args.model_dump())
             result = {"status": "removed", "image": args.image}
 
         elif name == "list_networks":
             args = ListNetworksInput.model_validate(arguments)
-            networks = docker_client.networks.list(**args.model_dump())
+            networks = _docker.networks.list(**args.model_dump())
             result = [
                 {"id": net.id, "name": net.name, "driver": net.attrs["Driver"]}
                 for net in networks
@@ -460,30 +462,30 @@ async def call_tool(
 
         elif name == "create_network":
             args = CreateNetworkInput.model_validate(arguments)
-            network = docker_client.networks.create(**args.model_dump())
+            network = _docker.networks.create(**args.model_dump())
             result = {"id": network.id, "name": network.name}
 
         elif name == "remove_network":
             args = RemoveNetworkInput.model_validate(arguments)
-            network = docker_client.networks.get(args.network_id)
+            network = _docker.networks.get(args.network_id)
             network.remove()
             result = {"status": "removed", "id": args.network_id}
 
         elif name == "list_volumes":
             ListVolumesInput.model_validate(arguments)  # Validate empty input
-            volumes = docker_client.volumes.list()
+            volumes = _docker.volumes.list()
             result = [
                 {"name": vol.name, "driver": vol.attrs["Driver"]} for vol in volumes
             ]
 
         elif name == "create_volume":
             args = CreateVolumeInput.model_validate(arguments)
-            volume = docker_client.volumes.create(**args.model_dump())
+            volume = _docker.volumes.create(**args.model_dump())
             result = {"name": volume.name, "driver": volume.attrs["Driver"]}
 
         elif name == "remove_volume":
             args = RemoveVolumeInput.model_validate(arguments)
-            volume = docker_client.volumes.get(args.volume_name)
+            volume = _docker.volumes.get(args.volume_name)
             volume.remove(force=args.force)
             result = {"status": "removed", "name": args.volume_name}
 
@@ -503,8 +505,15 @@ async def call_tool(
     return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
-async def main():
+async def run_stdio(settings: ServerSettings, docker_client: docker.DockerClient):
+    """Run the server on Standard I/O with the given settings and Docker client."""
     from mcp.server.stdio import stdio_server
+
+    global _docker
+    _docker = docker_client
+
+    global _server_settings
+    _server_settings = settings
 
     async with stdio_server() as (read_stream, write_stream):
         await app.run(read_stream, write_stream, app.create_initialization_options())

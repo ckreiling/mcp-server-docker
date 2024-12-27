@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "A Docker MCP Server"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["docker>=7.1.0", "mcp>=1.1.0"]
+dependencies = [
+    "docker>=7.1.0",
+    "mcp>=1.1.0",
+    "pydantic-settings>=2.6.1",
+]
 
 [[project.authors]]
 name = "Christian Kreiling"
