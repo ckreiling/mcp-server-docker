@@ -150,13 +150,10 @@ And then use this config:
       "run",
       "-i",
       "--rm",
-      "-e",
-      "DOCKER_HOST",
+      "-v",
+      "/var/run/docker.sock:/var/run/docker.sock",
       "mcp-server-docker:latest"
-    ],
-    "env": {
-      "DOCKER_HOST": "tcp://<YOUR LOCAL IP>:2375"
-    }
+    ]
   }
 }
 ```
