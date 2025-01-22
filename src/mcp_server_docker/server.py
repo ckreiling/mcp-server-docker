@@ -28,6 +28,7 @@ from .input_schemas import (
     RemoveNetworkInput,
     RemoveVolumeInput,
 )
+from .output_schemas import docker_to_dict
 from .settings import ServerSettings
 
 app = Server("docker-server")
@@ -93,13 +94,13 @@ Every Docker resource you create must also be prefixed with the project name, fo
 Here are the resources currently present in the project, based on the presence of the above label:
 
 <BEGIN CONTAINERS>
-{json.dumps([{"name": c.name, "image": {"id": c.image.id, "tags": c.image.tags} if c.image is not None else {}, "status": c.status, "id": c.id, "ports": c.ports, "health": c.health} for c in containers], indent=2)}
+{json.dumps([docker_to_dict(c) for c in containers], indent=2)}
 <END CONTAINERS>
 <BEGIN VOLUMES>
-{json.dumps([{"name": v.name, "id": v.id} for v in volumes], indent=2)}
+{json.dumps([docker_to_dict(v) for v in volumes], indent=2)}
 <END VOLUMES>
 <BEGIN NETWORKS>
-{json.dumps([{"name": n.name, "id": n.id, "containers": [{"id": c.id} for c in n.containers]} for n in networks], indent=2)}
+{json.dumps([docker_to_dict(n) for n in networks], indent=2)}
 <END NETWORKS>
 
 Do not retry the same failed action more than once. Prefer terminating your output
@@ -351,33 +352,17 @@ async def call_tool(
         if name == "list_containers":
             args = ListContainersInput.model_validate(arguments)
             containers = _docker.containers.list(**args.model_dump())
-            result = [
-                {
-                    "id": c.id,
-                    "name": c.name,
-                    "status": c.status,
-                    "image": c.image.tags,
-                }
-                for c in containers
-            ]
+            result = [docker_to_dict(c) for c in containers]
 
         elif name == "create_container":
             args = CreateContainerInput.model_validate(arguments)
             container = _docker.containers.create(**args.model_dump())
-            result = {
-                "status": container.status,
-                "id": container.id,
-                "name": container.name,
-            }
+            result = docker_to_dict(container)
 
         elif name == "run_container":
             args = CreateContainerInput.model_validate(arguments)
             container = _docker.containers.run(**args.model_dump())
-            result = {
-                "status": container.status,
-                "id": container.id,
-                "name": container.name,
-            }
+            result = docker_to_dict(container)
 
         elif name == "recreate_container":
             args = RecreateContainerInput.model_validate(arguments)
@@ -388,29 +373,25 @@ async def call_tool(
 
             run_args = CreateContainerInput.model_validate(arguments)
             container = _docker.containers.run(**run_args.model_dump())
-            result = {
-                "status": container.status,
-                "id": container.id,
-                "name": container.name,
-            }
+            result = docker_to_dict(container)
 
         elif name == "start_container":
             args = ContainerActionInput.model_validate(arguments)
             container = _docker.containers.get(args.container_id)
             container.start()
-            result = {"status": container.status, "id": container.id}
+            result = docker_to_dict(container)
 
         elif name == "stop_container":
             args = ContainerActionInput.model_validate(arguments)
             container = _docker.containers.get(args.container_id)
             container.stop()
-            result = {"status": container.status, "id": container.id}
+            result = docker_to_dict(container)
 
         elif name == "remove_container":
             args = RemoveContainerInput.model_validate(arguments)
             container = _docker.containers.get(args.container_id)
             container.remove(force=args.force)
-            result = {"status": "removed", "id": args.container_id}
+            result = docker_to_dict(container, {"status": "removed"})
 
         elif name == "fetch_container_logs":
             args = FetchContainerLogsInput.model_validate(arguments)
@@ -422,14 +403,14 @@ async def call_tool(
             args = ListImagesInput.model_validate(arguments)
 
             images = _docker.images.list(**args.model_dump())
-            result = [{"id": img.id, "tags": img.tags} for img in images]
+            result = [docker_to_dict(img) for img in images]
 
         elif name == "pull_image":
             args = PullPushImageInput.model_validate(arguments)
             model_dump = args.model_dump()
             repository = model_dump.pop("repository")
             image = _docker.images.pull(repository, **model_dump)
-            result = {"id": image.id, "tags": image.tags}
+            result = docker_to_dict(image)
 
         elif name == "push_image":
             args = PullPushImageInput.model_validate(arguments)
@@ -445,7 +426,7 @@ async def call_tool(
         elif name == "build_image":
             args = BuildImageInput.model_validate(arguments)
             image, logs = _docker.images.build(**args.model_dump())
-            result = {"id": image.id, "tags": image.tags, "logs": list(logs)}
+            result = {"image": docker_to_dict(image), "logs": list(logs)}
 
         elif name == "remove_image":
             args = RemoveImageInput.model_validate(arguments)
@@ -455,39 +436,34 @@ async def call_tool(
         elif name == "list_networks":
             args = ListNetworksInput.model_validate(arguments)
             networks = _docker.networks.list(**args.model_dump())
-            result = [
-                {"id": net.id, "name": net.name, "driver": net.attrs["Driver"]}
-                for net in networks
-            ]
+            result = [docker_to_dict(net) for net in networks]
 
         elif name == "create_network":
             args = CreateNetworkInput.model_validate(arguments)
             network = _docker.networks.create(**args.model_dump())
-            result = {"id": network.id, "name": network.name}
+            result = docker_to_dict(network)
 
         elif name == "remove_network":
             args = RemoveNetworkInput.model_validate(arguments)
             network = _docker.networks.get(args.network_id)
             network.remove()
-            result = {"status": "removed", "id": args.network_id}
+            result = docker_to_dict(network)
 
         elif name == "list_volumes":
             ListVolumesInput.model_validate(arguments)  # Validate empty input
             volumes = _docker.volumes.list()
-            result = [
-                {"name": vol.name, "driver": vol.attrs["Driver"]} for vol in volumes
-            ]
+            result = [docker_to_dict(v) for v in volumes]
 
         elif name == "create_volume":
             args = CreateVolumeInput.model_validate(arguments)
             volume = _docker.volumes.create(**args.model_dump())
-            result = {"name": volume.name, "driver": volume.attrs["Driver"]}
+            result = docker_to_dict(volume)
 
         elif name == "remove_volume":
             args = RemoveVolumeInput.model_validate(arguments)
             volume = _docker.volumes.get(args.volume_name)
             volume.remove(force=args.force)
-            result = {"status": "removed", "name": args.volume_name}
+            result = docker_to_dict(volume)
 
         else:
             return [types.TextContent(type="text", text=f"Unknown tool: {name}")]
