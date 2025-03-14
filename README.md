@@ -180,3 +180,8 @@ details, see
 Prefer using Devbox to configure your development environment.
 
 See the `devbox.json` for helpful development commands.
+
+### Enable Word-Wrap/Soft-Wrap to make it easier to read long lines
+In VSCode, go to setting then search "word wrap", then set it as "on".
+
+In PyCharm, go to setting->Editor-General, enable "Soft-wrap these files", and make it as "*.md; *.txt; *.rst; *.adoc; *.json; *.py"
