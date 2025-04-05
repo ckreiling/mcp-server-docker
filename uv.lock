@@ -186,6 +186,7 @@ dependencies = [
     { name = "docker" },
     { name = "mcp" },
     { name = "pydantic-settings" },
+    { name = "python-dotenv" },
 ]
 
 [package.metadata]
@@ -193,6 +194,7 @@ requires-dist = [
     { name = "docker", specifier = ">=7.1.0" },
     { name = "mcp", specifier = ">=1.1.0" },
     { name = "pydantic-settings", specifier = ">=2.6.1" },
+    { name = "python-dotenv", specifier = ">=1.0.1" },
 ]
 
 [[package]]

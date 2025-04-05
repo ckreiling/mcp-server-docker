@@ -18,6 +18,7 @@ from .input_schemas import (
     DockerComposePromptInput,
     FetchContainerLogsInput,
     ListContainersInput,
+    ListCustomSecretsInput,
     ListImagesInput,
     ListNetworksInput,
     ListVolumesInput,
@@ -336,6 +337,11 @@ async def list_tools() -> list[types.Tool]:
             description="Remove a Docker volume",
             inputSchema=RemoveVolumeInput.model_json_schema(),
         ),
+        types.Tool(
+            name="list_custom_secret_names",
+            description="List the names of custom secrets available to mount on containers",
+            inputSchema=ListCustomSecretsInput.model_json_schema(),
+        ),
     ]
 
 
@@ -355,23 +361,31 @@ async def call_tool(
             result = [docker_to_dict(c) for c in containers]
 
         elif name == "create_container":
-            args = CreateContainerInput.model_validate(arguments)
+            args = CreateContainerInput(
+                **arguments, secrets=_server_settings.docker_secrets
+            )
             container = _docker.containers.create(**args.model_dump())
             result = docker_to_dict(container)
 
         elif name == "run_container":
-            args = CreateContainerInput.model_validate(arguments)
+            args = CreateContainerInput(
+                **arguments, secrets=_server_settings.docker_secrets
+            )
             container = _docker.containers.run(**args.model_dump())
             result = docker_to_dict(container)
 
         elif name == "recreate_container":
-            args = RecreateContainerInput.model_validate(arguments)
+            args = RecreateContainerInput(
+                **arguments, secrets=_server_settings.docker_secrets
+            )
 
             container = _docker.containers.get(args.resolved_container_id)
             container.stop()
             container.remove()
 
-            run_args = CreateContainerInput.model_validate(arguments)
+            run_args = CreateContainerInput(
+                **arguments, secrets=_server_settings.docker_secrets
+            )
             container = _docker.containers.run(**run_args.model_dump())
             result = docker_to_dict(container)
 
@@ -464,6 +478,9 @@ async def call_tool(
             volume = _docker.volumes.get(args.volume_name)
             volume.remove(force=args.force)
             result = docker_to_dict(volume)
+
+        elif name == "list_custom_secret_names":
+            result = list(_server_settings.docker_secrets.keys())
 
         else:
             return [types.TextContent(type="text", text=f"Unknown tool: {name}")]

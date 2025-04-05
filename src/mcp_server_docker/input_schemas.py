@@ -1,15 +1,18 @@
 import json
 from datetime import datetime
-from typing import Any, Literal, get_args, get_origin
+from typing import Any, Literal, assert_never, get_args, get_origin
 
 from pydantic import (
     BaseModel,
     Field,
+    SecretStr,
     ValidationInfo,
     computed_field,
     field_validator,
     model_validator,
 )
+
+from pydantic.json_schema import SkipJsonSchema
 
 
 class JSONParsingModel(BaseModel):
@@ -107,6 +110,51 @@ class CreateContainerInput(JSONParsingModel):
         description="Container labels, either as a dictionary or a list of key=value strings",
     )
     auto_remove: bool = Field(False, description="Automatically remove the container")
+    custom_secrets_environment: dict[str, str] = Field(
+        {},
+        description="Map of env var name to secret name. The custom secret value associated to the given name will be mounted as the given env var.",
+        exclude=True,
+    )
+    secrets: SkipJsonSchema[dict[str, SecretStr]] = Field(..., exclude=True)
+
+    @model_validator(mode="after")
+    def inject_secrets_to_environment(self):
+        """Add secret values to environment variables."""
+        if not self.custom_secrets_environment:
+            return self
+
+        missing_secrets = set(self.custom_secrets_environment.values()) - set(
+            self.secrets
+        )
+        if missing_secrets:
+            raise ValueError(f"Some custom secrets do not exist: {missing_secrets}")
+
+        if self.environment is None:
+            self.environment = {}
+
+        for env_var_name, secret_name in self.custom_secrets_environment.items():
+            self.environment[env_var_name] = self.secrets[
+                secret_name
+            ].get_secret_value()
+
+        if self.labels is None:
+            self.labels = {}
+
+        custom_secrets_env_json = json.dumps(self.custom_secrets_environment)
+
+        match self.labels:
+            case list():
+                self.labels.append(
+                    f"mcp-server-docker.custom-secrets='{custom_secrets_env_json}'"
+                )
+            case dict():
+                self.labels["mcp-server-docker.custom-secrets"] = (
+                    custom_secrets_env_json
+                )
+            case _:
+                assert_never(self.labels)
+
+        return self
 
 
 class RecreateContainerInput(CreateContainerInput):
@@ -203,6 +251,10 @@ class CreateVolumeInput(JSONParsingModel):
 class RemoveVolumeInput(JSONParsingModel):
     volume_name: str = Field(..., description="Volume name")
     force: bool = Field(False, description="Force remove the volume")
+
+
+class ListCustomSecretsInput(JSONParsingModel):
+    pass
 
 
 class DockerComposePromptInput(BaseModel):

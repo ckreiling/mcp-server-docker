@@ -45,6 +45,19 @@ def docker_to_dict(
                 "hostname": config.get("Hostname"),
                 "user": config.get("User"),
                 "image": config.get("Image"),
+                # It's common for Docker containers to have secrets configured as
+                # plaintext env vars, so we only inform the LLM of the keys.
+                # It's unclear how best to share env values with the LLM without
+                # risking exposure. A few approaches that come to mind:
+                #
+                #    - Naive: redact values with keys containing "password" or "key"
+                #    - Advanced: use a tool like detect-secrets for detection: https://github.com/Yelp/detect-secrets
+                #    - Manual: require users to explicitly mark some env vars as secrets with MCP server configuration
+                #
+                # Perhaps some combination of these would be best. In any case,
+                # users of this MCP server should have to opt-in to this behavior since
+                # it poses a security risk no matter what.
+                "env_keys": config.get("Env", {}).keys(),
             },
         }
 

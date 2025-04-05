@@ -8,6 +8,7 @@ dependencies = [
     "docker>=7.1.0",
     "mcp>=1.1.0",
     "pydantic-settings>=2.6.1",
+    "python-dotenv>=1.0.1",
 ]
 
 [[project.authors]]
