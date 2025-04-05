@@ -7,12 +7,9 @@ requires-python = ">=3.12"
 dependencies = ["docker>=7.1.0", "mcp>=1.1.0", "pydantic-settings>=2.6.1"]
 license = { file = "LICENSE" }
 keywords = ["docker", "mcp", "server"]
-
-requires-python = ">=3.12"
-
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Programming Language :: Python :: 3.12"
+    "Programming Language :: Python :: 3.12",
 ]
 
 [project.urls]
