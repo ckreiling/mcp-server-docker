@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ckreiling-mcp-server-docker-badge.png)](https://mseep.ai/app/ckreiling-mcp-server-docker)
+
 # 🐋 Docker MCP server
 
 An MCP server for managing Docker with natural language!
