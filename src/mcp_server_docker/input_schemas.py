@@ -55,6 +55,23 @@ class JSONParsingModel(BaseModel):
         except json.JSONDecodeError:
             return value
 
+    @classmethod
+    def model_json_schema(cls, *args, **kwargs) -> dict[str, Any]:  # type: ignore[override]
+        schema = super().model_json_schema(*args, **kwargs)
+
+        def _walk(node: Any) -> None:
+            if isinstance(node, dict):
+                if node.get("type") == "array" and node.get("items") is None:
+                    node["items"] = {}
+                for v in node.values():
+                    _walk(v)
+            elif isinstance(node, list):
+                for v in node:
+                    _walk(v)
+
+        _walk(schema)
+        return schema
+
 
 class FetchContainerLogsInput(JSONParsingModel):
     container_id: str = Field(..., description="Container ID or name")
