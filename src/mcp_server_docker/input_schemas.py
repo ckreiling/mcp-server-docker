@@ -10,6 +10,35 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
+from pydantic_core.core_schema import TupleSchema
+
+class CopilotAgentCompatibleSchema(GenerateJsonSchema):
+    """
+    Make **tuple fields** pass GitHub Copilot Agent’s tool-parameter validator.
+
+    Why?
+    ----
+    * Pydantic’s default tuple schema contains only ``prefixItems`` and **omits
+      ``items`` entirely**.
+    * Copilot Agent (v0.27.1) insists every array schema has an ``items`` entry
+      and fails with the exact message::
+
+          Failed to validate tool f1e_create_container: Error: tool parameters array type must have items
+
+    What we do
+    ----------
+    After generating the normal tuple schema, inject an empty object
+    ``items: {}`` if that key is missing.
+    An empty object means “any additional items are allowed”, which is valid
+    JSON Schema Draft 2020-12 *and* satisfies Copilot Agent.
+    """
+
+    def tuple_schema(self, schema: TupleSchema) -> JsonSchemaValue:
+        json_schema: JsonSchemaValue = super().tuple_schema(schema)
+        if json_schema.get("items") is None:
+            json_schema["items"] = {}
+        return json_schema
 
 
 class JSONParsingModel(BaseModel):
@@ -56,22 +85,13 @@ class JSONParsingModel(BaseModel):
             return value
 
     @classmethod
-    def model_json_schema(cls, *args, **kwargs) -> dict[str, Any]:  # type: ignore[override]
-        schema = super().model_json_schema(*args, **kwargs)
-
-        def _walk(node: Any) -> None:
-            if isinstance(node, dict):
-                if node.get("type") == "array" and node.get("items") is None:
-                    node["items"] = {}
-                for v in node.values():
-                    _walk(v)
-            elif isinstance(node, list):
-                for v in node:
-                    _walk(v)
-
-        _walk(schema)
-        return schema
-
+    def model_json_schema(cls, *args, schema_generator: type[GenerateJsonSchema]=CopilotAgentCompatibleSchema, **kwargs):
+        """
+        Use CopilotAgentCompatibleSchema unless the caller overrides it explicitly.
+        """
+        return super().model_json_schema(
+            *args, schema_generator=schema_generator, **kwargs
+        )
 
 class FetchContainerLogsInput(JSONParsingModel):
     container_id: str = Field(..., description="Container ID or name")
