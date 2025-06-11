@@ -61,6 +61,9 @@ class FetchContainerLogsInput(JSONParsingModel):
     tail: int | Literal["all"] = Field(
         100, description="Number of lines to show from the end"
     )
+    filter_string: str | None = Field(
+        None, description="Optional string to filter log lines by"
+    )
 
 
 class ListContainersFilters(JSONParsingModel):

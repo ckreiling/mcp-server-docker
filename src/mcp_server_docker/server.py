@@ -268,7 +268,7 @@ async def list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="fetch_container_logs",
-            description="Fetch logs for a Docker container",
+            description="Fetch logs for a Docker container, with an optional string to filter logs by.",
             inputSchema=FetchContainerLogsInput.model_json_schema(),
         ),
         types.Tool(
@@ -396,8 +396,10 @@ async def call_tool(
         elif name == "fetch_container_logs":
             args = FetchContainerLogsInput(**arguments)
             container = _docker.containers.get(args.container_id)
-            logs = container.logs(tail=args.tail).decode("utf-8")
-            result = {"logs": logs.split("\n")}
+            logs = container.logs(tail=args.tail).decode("utf-8").split("\n")
+            if args.filter_string:
+                logs = [line for line in logs if args.filter_string in line]
+            result = {"logs": logs}
 
         elif name == "list_images":
             args = ListImagesInput(**arguments)
