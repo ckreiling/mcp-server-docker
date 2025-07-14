@@ -7,6 +7,7 @@ An MCP server for managing Docker with natural language!
 - 🚀 Compose containers with natural language
 - 🔍 Introspect & debug running containers
 - 📀 Manage persistent data with Docker volumes
+- ⚡ Execute commands inside running containers
 
 ## ❓ Who is this for?
 
@@ -140,6 +141,49 @@ The server implements a couple resources for every container:
 - `fetch_container_logs`
 - `stop_container`
 - `remove_container`
+- `exec_in_container`
+
+#### New: `exec_in_container`
+
+The `exec_in_container` tool allows you to run arbitrary commands inside already running Docker containers. This is particularly useful for:
+
+- Running development tools and scripts directly in containers
+- Writing and executing unit tests within container environments
+- Allowing AI tools like Claude to execute and verify code inside containers for correctness
+- Debugging and troubleshooting running applications
+
+**Usage Examples:**
+
+```json
+{
+  "container_id": "my-container",
+  "command": "ls -la /app",
+  "working_dir": "/app",
+  "user": "root"
+}
+```
+
+```json
+{
+  "container_id": "web-server",
+  "command": ["python", "-m", "pytest", "tests/"],
+  "environment": {"PYTHONPATH": "/app"}
+}
+```
+
+**Parameters:**
+- `container_id`: Container ID or name (required)
+- `command`: Command to execute (string or array of strings) (required)
+- `working_dir`: Working directory for the command (optional)
+- `environment`: Environment variables for the command (optional)
+- `user`: User to run the command as (optional)
+- `detach`: Run command in the background (optional, default: false)
+- `stdin`: Attach stdin to the command (optional, default: false)
+- `tty`: Allocate a pseudo-TTY (optional, default: false)
+- `privileged`: Run with extended privileges (optional, default: false)
+- `stream`: Stream output as it's generated (optional, default: false)
+- `socket`: Return socket instead of output (optional, default: false)
+- `demux`: Demultiplex stdout and stderr (optional, default: false)
 
 ### Images
 

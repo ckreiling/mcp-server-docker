@@ -139,6 +139,28 @@ class RemoveContainerInput(JSONParsingModel):
     force: bool = Field(False, description="Force remove the container")
 
 
+class ExecInContainerInput(JSONParsingModel):
+    """
+    Schema for executing commands inside a running Docker container.
+    
+    This allows running arbitrary commands inside already running containers,
+    useful for development tools, testing, and verification.
+    """
+    
+    container_id: str = Field(..., description="Container ID or name")
+    command: str | list[str] = Field(..., description="Command to execute inside the container")
+    working_dir: str | None = Field(None, description="Working directory for the command")
+    environment: dict[str, str] | None = Field(None, description="Environment variables for the command")
+    user: str | None = Field(None, description="User to run the command as")
+    detach: bool = Field(False, description="Run command in the background")
+    stdin: bool = Field(False, description="Attach stdin to the command")
+    tty: bool = Field(False, description="Allocate a pseudo-TTY")
+    privileged: bool = Field(False, description="Run with extended privileges")
+    stream: bool = Field(False, description="Stream output as it's generated")
+    socket: bool = Field(False, description="Return socket instead of output")
+    demux: bool = Field(False, description="Demultiplex stdout and stderr")
+
+
 class ListImagesFilters(JSONParsingModel):
     dangling: bool | None = Field(None, description="Show dangling images")
     label: list[str] | None = Field(

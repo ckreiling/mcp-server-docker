@@ -16,6 +16,7 @@ from .input_schemas import (
     CreateNetworkInput,
     CreateVolumeInput,
     DockerComposePromptInput,
+    ExecInContainerInput,
     FetchContainerLogsInput,
     ListContainersInput,
     ListImagesInput,
@@ -282,6 +283,11 @@ async def list_tools() -> list[types.Tool]:
             inputSchema=RemoveContainerInput.model_json_schema(),
         ),
         types.Tool(
+            name="exec_in_container",
+            description="Execute a command inside a running Docker container",
+            inputSchema=ExecInContainerInput.model_json_schema(),
+        ),
+        types.Tool(
             name="list_images",
             description="List Docker images",
             inputSchema=ListImagesInput.model_json_schema(),
@@ -398,6 +404,62 @@ async def call_tool(
             container = _docker.containers.get(args.container_id)
             logs = container.logs(tail=args.tail).decode("utf-8")
             result = {"logs": logs.split("\n")}
+
+        elif name == "exec_in_container":
+            args = ExecInContainerInput(**arguments)
+            container = _docker.containers.get(args.container_id)
+            
+            # Build the exec parameters
+            exec_params = {
+                "cmd": args.command,
+                "stdout": True,
+                "stderr": True,
+                "stdin": args.stdin,
+                "tty": args.tty,
+                "privileged": args.privileged,
+                "user": args.user,
+                "environment": args.environment,
+                "workdir": args.working_dir,
+                "detach": args.detach,
+                "stream": args.stream,
+                "socket": args.socket,
+                "demux": args.demux,
+            }
+            
+            # Remove None values to avoid issues with Docker API
+            exec_params = {k: v for k, v in exec_params.items() if v is not None}
+            
+            # Execute the command
+            exec_result = container.exec_run(**exec_params)
+            
+            if args.detach:
+                result = {"status": "detached", "exec_id": exec_result.id}
+            elif args.stream:
+                # For streaming, we need to collect the output
+                output_lines = []
+                for line in exec_result.output:
+                    if isinstance(line, bytes):
+                        output_lines.append(line.decode('utf-8'))
+                    else:
+                        output_lines.append(str(line))
+                result = {
+                    "exit_code": exec_result.exit_code,
+                    "output": output_lines,
+                    "command": args.command,
+                    "container_id": args.container_id
+                }
+            else:
+                # Standard execution
+                output = exec_result.output
+                if isinstance(output, bytes):
+                    output = output.decode('utf-8')
+                
+                result = {
+                    "exit_code": exec_result.exit_code,
+                    "output": output,
+                    "command": args.command,
+                    "container_id": args.container_id
+                }
 
         elif name == "list_images":
             args = ListImagesInput(**arguments)
