@@ -22,6 +22,40 @@ class JSONParsingModel(BaseModel):
     But it does send valid JSON!
     """
 
+    @classmethod
+    def model_json_schema(cls, by_alias: bool = True, ref_template: str = '#/$defs/{model}') -> dict[str, Any]:
+        """
+        Override model_json_schema to add empty 'items' field to tuple schemas.
+        This fixes issue #25 where tuple schemas need an 'items' field for Copilot Agent validation.
+        """
+        schema = super().model_json_schema(by_alias=by_alias, ref_template=ref_template)
+        
+        def add_items_to_tuple_schemas(obj: dict[str, Any]) -> None:
+            """Recursively add 'items': {} to tuple-type schemas."""
+            if isinstance(obj, dict):
+                # Check if this is a tuple schema (array type with fixed number of items)
+                if obj.get('type') == 'array' and 'prefixItems' in obj and 'items' not in obj:
+                    obj['items'] = {}
+                
+                # Also handle anyOf/oneOf/allOf that might contain tuple schemas
+                for key in ['anyOf', 'oneOf', 'allOf']:
+                    if key in obj and isinstance(obj[key], list):
+                        for item in obj[key]:
+                            add_items_to_tuple_schemas(item)
+                
+                # Recursively process nested objects
+                for value in obj.values():
+                    if isinstance(value, dict):
+                        add_items_to_tuple_schemas(value)
+                    elif isinstance(value, list):
+                        for item in value:
+                            if isinstance(item, dict):
+                                add_items_to_tuple_schemas(item)
+        
+        # Process the entire schema
+        add_items_to_tuple_schemas(schema)
+        return schema
+
     @field_validator("*", mode="before")
     @classmethod
     def _try_parse_json(cls, value: Any, info: ValidationInfo):
@@ -60,6 +94,9 @@ class FetchContainerLogsInput(JSONParsingModel):
     container_id: str = Field(..., description="Container ID or name")
     tail: int | Literal["all"] = Field(
         100, description="Number of lines to show from the end"
+    )
+    filter_string: str | None = Field(
+        None, description="Optional string pattern to filter log lines containing this text"
     )
 
 
@@ -204,6 +241,15 @@ class CreateVolumeInput(JSONParsingModel):
 class RemoveVolumeInput(JSONParsingModel):
     volume_name: str = Field(..., description="Volume name")
     force: bool = Field(False, description="Force remove the volume")
+
+
+class ExecInContainerInput(JSONParsingModel):
+    container_id: str = Field(..., description="Container ID or name")
+    cmd: str | list[str] = Field(..., description="Command to execute (string or list)")
+    user: str | None = Field(None, description="User to run command as")
+    workdir: str | None = Field(None, description="Working directory for the command")
+    environment: dict[str, str] | None = Field(None, description="Environment variables")
+    detach: bool = Field(False, description="Whether to run in background")
 
 
 class DockerComposePromptInput(BaseModel):

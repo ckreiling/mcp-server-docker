@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluetooth Laser Controller</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .control-group {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 80px;
+            margin-right: 10px;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+        input[type="number"] {
+            width: 60px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bluetooth Laser Controller</h1>
+    
+    <div class="status" id="status">
+        Status: Disconnected
+    </div>
+    
+    <button id="connectBtn">Connect to LaserCube</button>
+    <button id="disconnectBtn" disabled>Disconnect</button>
+    
+    <div class="controls">
+        <h3>Laser Controls</h3>
+        
+        <div class="control-group">
+            <label>X Position:</label>
+            <input type="range" id="xSlider" min="-1" max="1" step="0.01" value="0">
+            <input type="number" id="xValue" min="-1" max="1" step="0.01" value="0">
+        </div>
+        
+        <div class="control-group">
+            <label>Y Position:</label>
+            <input type="range" id="ySlider" min="-1" max="1" step="0.01" value="0">
+            <input type="number" id="yValue" min="-1" max="1" step="0.01" value="0">
+        </div>
+        
+        <div class="control-group">
+            <label>Red:</label>
+            <input type="range" id="rSlider" min="0" max="255" value="255">
+            <input type="number" id="rValue" min="0" max="255" value="255">
+        </div>
+        
+        <div class="control-group">
+            <label>Green:</label>
+            <input type="range" id="gSlider" min="0" max="255" value="0">
+            <input type="number" id="gValue" min="0" max="255" value="0">
+        </div>
+        
+        <div class="control-group">
+            <label>Blue:</label>
+            <input type="range" id="bSlider" min="0" max="255" value="0">
+            <input type="number" id="bValue" min="0" max="255" value="0">
+        </div>
+        
+        <div class="control-group">
+            <label>Blanking:</label>
+            <input type="checkbox" id="blankingCheck">
+        </div>
+        
+        <button id="sendBtn" disabled>Send Laser Command</button>
+    </div>
+
+    <script src="BluetoothLaserController.js"></script>
+    <script>
+        const controller = new BluetoothLaserController();
+        let isConnected = false;
+
+        // DOM elements
+        const status = document.getElementById('status');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        
+        // Sliders and values
+        const xSlider = document.getElementById('xSlider');
+        const xValue = document.getElementById('xValue');
+        const ySlider = document.getElementById('ySlider');
+        const yValue = document.getElementById('yValue');
+        const rSlider = document.getElementById('rSlider');
+        const rValue = document.getElementById('rValue');
+        const gSlider = document.getElementById('gSlider');
+        const gValue = document.getElementById('gValue');
+        const bSlider = document.getElementById('bSlider');
+        const bValue = document.getElementById('bValue');
+        const blankingCheck = document.getElementById('blankingCheck');
+
+        // Sync sliders with number inputs
+        function syncControls(slider, valueInput) {
+            slider.addEventListener('input', () => {
+                valueInput.value = slider.value;
+            });
+            valueInput.addEventListener('input', () => {
+                slider.value = valueInput.value;
+            });
+        }
+
+        syncControls(xSlider, xValue);
+        syncControls(ySlider, yValue);
+        syncControls(rSlider, rValue);
+        syncControls(gSlider, gValue);
+        syncControls(bSlider, bValue);
+
+        // Connect button
+        connectBtn.addEventListener('click', async () => {
+            try {
+                status.textContent = 'Status: Connecting...';
+                await controller.connect();
+                isConnected = true;
+                status.textContent = 'Status: Connected to LaserCube';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                sendBtn.disabled = false;
+            } catch (error) {
+                status.textContent = `Status: Connection failed - ${error.message}`;
+                console.error('Connection error:', error);
+            }
+        });
+
+        // Disconnect button
+        disconnectBtn.addEventListener('click', () => {
+            if (controller.device && controller.device.gatt.connected) {
+                controller.device.gatt.disconnect();
+            }
+            isConnected = false;
+            status.textContent = 'Status: Disconnected';
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            sendBtn.disabled = true;
+        });
+
+        // Send command button
+        sendBtn.addEventListener('click', async () => {
+            if (!isConnected) return;
+            
+            try {
+                const x = parseFloat(xValue.value);
+                const y = parseFloat(yValue.value);
+                const r = parseInt(rValue.value);
+                const g = parseInt(gValue.value);
+                const b = parseInt(bValue.value);
+                const blanking = blankingCheck.checked;
+                
+                await controller.sendLaserCommand(x, y, r, g, b, blanking);
+                status.textContent = `Status: Command sent (${x}, ${y}) RGB(${r},${g},${b}) Blanking:${blanking}`;
+            } catch (error) {
+                status.textContent = `Status: Command failed - ${error.message}`;
+                console.error('Command error:', error);
+            }
+        });
+
+        // Handle disconnection events
+        if ('bluetooth' in navigator) {
+            navigator.bluetooth.addEventListener('advertisementreceived', (event) => {
+                console.log('Advertisement received:', event);
+            });
+        } else {
+            status.textContent = 'Status: Web Bluetooth API not supported in this browser';
+            connectBtn.disabled = true;
+        }
+    </script>
+</body>
+</html>

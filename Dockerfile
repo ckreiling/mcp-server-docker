@@ -7,13 +7,8 @@ ENV UV_COMPILE_BYTECODE=1
 # Copy from the cache instead of linking since it's a mounted volume
 ENV UV_LINK_MODE=copy
 
-COPY uv.lock pyproject.toml /app/
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev --no-editable
-
+COPY uv.lock pyproject.toml LICENSE README.md /app/
 COPY ./src /app/src
-COPY README.md ./README.md
-COPY LICENSE LICENSE
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
