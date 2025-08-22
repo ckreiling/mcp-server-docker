@@ -1,4 +1,5 @@
 # 🐋 Docker MCP server
+[![Trust Score](https://archestra.ai/mcp-catalog/api/badge/quality/ckreiling/mcp-server-docker)](https://archestra.ai/mcp-catalog/ckreiling__mcp-server-docker)
 
 An MCP server for managing Docker with natural language!
 
