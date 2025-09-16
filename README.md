@@ -41,6 +41,11 @@ cd mcp-server-docker
 uv tool install .
 ```
 
+Forcing a reinstall (e.g. after pulling new changes):
+```
+uv tool install --force --reinstall .
+```
+
 #### Claude code
 
 MacOS (with Docker Desktop):
