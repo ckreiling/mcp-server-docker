@@ -24,7 +24,33 @@ https://github.com/user-attachments/assets/65e35e67-bce0-4449-af7e-9f4dd773b4b3
 
 ## 🏎️ Quickstart
 
+
+
 ### Install
+
+```
+pip install uv
+```
+
+```
+brew install uv
+```
+
+```
+cd mcp-server-docker
+uv tool install .
+```
+
+#### Claude code
+
+MacOS (with Docker Desktop):
+```
+claude mcp add mcp-server-docker --env DOCKER_HOST=unix:///Users/youruser/.docker/run/docker.sock -- uvx mcp-server-docker
+```
+
+```
+claude mcp add mcp-server-docker -- uvx mcp-server-docker
+```
 
 #### Claude Desktop
 
