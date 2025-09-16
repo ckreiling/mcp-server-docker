@@ -57,6 +57,11 @@ claude mcp add mcp-server-docker --env DOCKER_HOST=unix:///Users/youruser/.docke
 claude mcp add mcp-server-docker -- uvx mcp-server-docker
 ```
 
+Support ~/.ssh/config aliases:
+```
+claude mcp add mcp-server-docker-shainy --env DOCKER_HOST=ssh://your-ssh-config-alias -- uvx mcp-server-docker
+```
+
 #### Claude Desktop
 
 On MacOS: `~/Library/Application\ Support/Claude/claude_desktop_config.json`
