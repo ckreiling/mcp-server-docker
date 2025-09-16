@@ -220,7 +220,9 @@ details, see
 
 This MCP server can connect to a remote Docker daemon over SSH.
 
-Simply set a `ssh://` host URL in the MCP server definition:
+#### Using full SSH URLs
+
+Set a `ssh://` host URL with username and hostname in the MCP server definition:
 
 ```
 "mcpServers": {
@@ -235,6 +237,26 @@ Simply set a `ssh://` host URL in the MCP server definition:
   }
 }
 ```
+
+#### Using SSH config aliases
+
+You can also use SSH config aliases defined in your `~/.ssh/config` file:
+
+```
+"mcpServers": {
+  "mcp-server-docker": {
+    "command": "uvx",
+    "args": [
+      "mcp-server-docker"
+    ],
+    "env": {
+      "DOCKER_HOST": "ssh://your-ssh-config-alias"
+    }
+  }
+}
+```
+
+The server will automatically resolve SSH config aliases to their full connection details (hostname, username, port) from your SSH configuration.
 
 ## 💻 Development
 
