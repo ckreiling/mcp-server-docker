@@ -7,6 +7,7 @@ import docker
 import mcp.types as types
 from docker.models.containers import Container
 from mcp.server import Server
+from mcp.types import ToolAnnotations
 from pydantic import AnyUrl, ValidationError
 
 from .input_schemas import (
@@ -245,96 +246,172 @@ async def list_tools() -> list[types.Tool]:
             name="list_containers",
             description="List all Docker containers",
             inputSchema=ListContainersInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="List Containers",
+                readOnlyHint=True,
+            ),
         ),
         types.Tool(
             name="create_container",
             description="Create a new Docker container",
             inputSchema=CreateContainerInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Create Container",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="run_container",
             description="Run an image in a new Docker container (preferred over `create_container` + `start_container`)",
             inputSchema=CreateContainerInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Run Container",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="recreate_container",
             description="Stop and remove a container, then run a new container. Fails if the container does not exist.",
             inputSchema=RecreateContainerInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Recreate Container",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="start_container",
             description="Start a Docker container",
             inputSchema=ContainerActionInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Start Container",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="fetch_container_logs",
             description="Fetch logs for a Docker container",
             inputSchema=FetchContainerLogsInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Fetch Container Logs",
+                readOnlyHint=True,
+            ),
         ),
         types.Tool(
             name="stop_container",
             description="Stop a Docker container",
             inputSchema=ContainerActionInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Stop Container",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="remove_container",
             description="Remove a Docker container",
             inputSchema=RemoveContainerInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Remove Container",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="list_images",
             description="List Docker images",
             inputSchema=ListImagesInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="List Images",
+                readOnlyHint=True,
+            ),
         ),
         types.Tool(
             name="pull_image",
             description="Pull a Docker image",
             inputSchema=PullPushImageInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Pull Image",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="push_image",
             description="Push a Docker image",
             inputSchema=PullPushImageInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Push Image",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="build_image",
             description="Build a Docker image from a Dockerfile",
             inputSchema=BuildImageInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Build Image",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="remove_image",
             description="Remove a Docker image",
             inputSchema=RemoveImageInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Remove Image",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="list_networks",
             description="List Docker networks",
             inputSchema=ListNetworksInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="List Networks",
+                readOnlyHint=True,
+            ),
         ),
         types.Tool(
             name="create_network",
             description="Create a Docker network",
             inputSchema=CreateNetworkInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Create Network",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="remove_network",
             description="Remove a Docker network",
             inputSchema=RemoveNetworkInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Remove Network",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="list_volumes",
             description="List Docker volumes",
             inputSchema=ListVolumesInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="List Volumes",
+                readOnlyHint=True,
+            ),
         ),
         types.Tool(
             name="create_volume",
             description="Create a Docker volume",
             inputSchema=CreateVolumeInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Create Volume",
+                destructiveHint=True,
+            ),
         ),
         types.Tool(
             name="remove_volume",
             description="Remove a Docker volume",
             inputSchema=RemoveVolumeInput.model_json_schema(),
+            annotations=ToolAnnotations(
+                title="Remove Volume",
+                destructiveHint=True,
+            ),
         ),
     ]
 
