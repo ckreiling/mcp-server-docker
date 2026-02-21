@@ -2,6 +2,10 @@
 
 An MCP server for managing Docker with natural language!
 
+<a href="https://glama.ai/mcp/servers/@ckreiling/mcp-server-docker">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@ckreiling/mcp-server-docker/badge" alt="Docker Server MCP server" />
+</a>
+
 ## 🪩 What can it do?
 
 - 🚀 Compose containers with natural language
