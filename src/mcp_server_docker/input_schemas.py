@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from typing import Any, Literal, get_args, get_origin
 
@@ -10,6 +11,63 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+
+# Host paths that must never be bind-mounted into containers.
+# Mounting container runtime sockets allows full host takeover from within
+# a container. /proc, /sys, and /dev expose kernel interfaces that enable
+# privilege escalation. These restrictions prevent container escape attacks
+# triggered via prompt injection or untrusted LLM tool calls.
+BLOCKED_MOUNT_SOURCES = frozenset(
+    {
+        "/var/run/docker.sock",
+        "/run/docker.sock",
+        "/var/run/containerd",
+        "/run/containerd",
+        "/var/run/crio",
+        "/run/crio",
+        "/proc",
+        "/sys",
+        "/dev",
+    }
+)
+
+
+def _extract_host_paths(
+    volumes: dict[str, dict[str, str]] | list[str],
+) -> list[str]:
+    """Return host source paths from a Docker volume mount specification.
+
+    Handles both formats accepted by the Docker SDK:
+      dict: {"/host/path": {"bind": "/container/path", "mode": "rw"}}
+      list: ["/host/path:/container/path:rw"]
+    """
+    if isinstance(volumes, dict):
+        return list(volumes.keys())
+
+    paths: list[str] = []
+    for entry in volumes:
+        # list entries are "source:dest[:mode]"
+        parts = entry.split(":")
+        if parts:
+            paths.append(parts[0])
+    return paths
+
+
+def _is_blocked_mount(host_path: str) -> str | None:
+    """Return the matched blocked path if host_path resolves to one, else None.
+
+    Resolves symlinks so that aliased paths (e.g. /tmp/sock pointing at
+    /var/run/docker.sock) are still caught.
+    """
+    try:
+        resolved = os.path.realpath(host_path)
+    except (OSError, ValueError):
+        resolved = host_path
+
+    for blocked in BLOCKED_MOUNT_SOURCES:
+        if resolved == blocked or resolved.startswith(blocked + os.sep):
+            return blocked
+    return None
 
 
 class JSONParsingModel(BaseModel):
@@ -103,6 +161,25 @@ class CreateContainerInput(JSONParsingModel):
     volumes: dict[str, dict[str, str]] | list[str] | None = Field(
         None, description="Volume mappings"
     )
+
+    @field_validator("volumes", mode="after")
+    @classmethod
+    def _reject_blocked_mounts(
+        cls, volumes: dict[str, dict[str, str]] | list[str] | None
+    ) -> dict[str, dict[str, str]] | list[str] | None:
+        if volumes is None:
+            return volumes
+
+        for host_path in _extract_host_paths(volumes):
+            blocked = _is_blocked_mount(host_path)
+            if blocked is not None:
+                raise ValueError(
+                    f"Volume mount source '{host_path}' is blocked. "
+                    f"Mounting '{blocked}' exposes host resources that "
+                    f"allow container escape or privilege escalation."
+                )
+        return volumes
+
     labels: dict[str, str] | list[str] | None = Field(
         None,
         description="Container labels, either as a dictionary or a list of key=value strings",
@@ -163,6 +240,23 @@ class BuildImageInput(JSONParsingModel):
     path: str = Field(..., description="Path to build context")
     tag: str = Field(..., description="Image tag")
     dockerfile: str | None = Field(None, description="Path to Dockerfile")
+
+    @field_validator("path", mode="after")
+    @classmethod
+    def _reject_sensitive_build_context(cls, path: str) -> str:
+        try:
+            resolved = os.path.realpath(path)
+        except (OSError, ValueError):
+            resolved = path
+
+        for blocked in BLOCKED_MOUNT_SOURCES:
+            if resolved == blocked or resolved.startswith(blocked + os.sep):
+                raise ValueError(
+                    f"Build context path '{path}' is blocked. "
+                    f"'{blocked}' contains sensitive host resources that "
+                    f"would be sent to the Docker daemon as build context."
+                )
+        return path
 
 
 class RemoveImageInput(JSONParsingModel):
