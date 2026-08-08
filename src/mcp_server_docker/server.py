@@ -541,7 +541,9 @@ def build_image(
     tag: Annotated[str, Field(description="Image tag")],
     dockerfile: Annotated[str | None, Field(description="Path to Dockerfile")] = None,
 ) -> dict[str, Any]:
-    image, logs = _client(ctx).images.build(path=path, tag=tag, dockerfile=dockerfile)
+    image, logs = _client(ctx).images.build(
+        path=path, tag=tag, dockerfile=dockerfile, rm=True, forcerm=True
+    )
     return {"image": docker_to_dict(image), "logs": list(logs)}
 
 

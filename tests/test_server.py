@@ -220,6 +220,8 @@ async def test_image_network_and_volume_call_semantics(server, docker_client):
             "path": ".",
             "tag": "test",
             "dockerfile": "Dockerfile.test",
+            "rm": True,
+            "forcerm": True,
         }
         await client.call_tool("remove_image", {"image": "test", "force": True})
         assert docker_client.call("images.remove") == {"image": "test", "force": True}
