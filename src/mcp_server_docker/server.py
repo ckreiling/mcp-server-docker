@@ -72,6 +72,13 @@ def _client(ctx: Context[AppContext]) -> docker.DockerClient:
     return ctx.request_context.lifespan_context.docker
 
 
+def _docker_filters(model: BaseModel | None) -> dict[str, Any] | None:
+    """Return Docker SDK filters without unset optional values."""
+    if model is None:
+        return None
+    return model.model_dump(exclude_none=True)
+
+
 @asynccontextmanager
 async def lifespan(_: MCPServer[AppContext]) -> AsyncIterator[AppContext]:
     """Create and close the Docker client for one server lifetime."""
@@ -243,7 +250,7 @@ def list_containers(
     return [
         docker_to_dict(container)
         for container in _client(ctx).containers.list(
-            all=all, filters=filters.model_dump() if filters else None
+            all=all, filters=_docker_filters(filters)
         )
     ]
 
@@ -495,7 +502,7 @@ def list_images(
     return [
         docker_to_dict(image)
         for image in _client(ctx).images.list(
-            name=name, all=all, filters=filters.model_dump() if filters else None
+            name=name, all=all, filters=_docker_filters(filters)
         )
     ]
 
@@ -575,7 +582,7 @@ def list_networks(
     return [
         docker_to_dict(network)
         for network in _client(ctx).networks.list(
-            filters=filters.model_dump() if filters else None
+            filters=_docker_filters(filters)
         )
     ]
 

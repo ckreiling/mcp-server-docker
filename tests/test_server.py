@@ -143,6 +143,8 @@ async def test_tools_have_flat_schemas_and_container_call_semantics(
 
         await client.call_tool("list_containers", {})
         assert docker_client.call("containers.list") == {"all": False, "filters": None}
+        await client.call_tool("list_containers", {"filters": {}})
+        assert docker_client.call("containers.list") == {"all": False, "filters": {}}
         await client.call_tool(
             "list_containers", {"all": True, "filters": {"label": ["a=b"]}}
         )
@@ -206,7 +208,7 @@ async def test_image_network_and_volume_call_semantics(server, docker_client):
         assert docker_client.call("images.list") == {
             "name": "alpine",
             "all": True,
-            "filters": {"dangling": True, "label": None},
+            "filters": {"dangling": True},
         }
         await client.call_tool("pull_image", {"repository": "alpine", "tag": "3.20"})
         assert docker_client.call("images.pull") == ("alpine", {"tag": "3.20"})
@@ -223,6 +225,8 @@ async def test_image_network_and_volume_call_semantics(server, docker_client):
         }
         await client.call_tool("remove_image", {"image": "test", "force": True})
         assert docker_client.call("images.remove") == {"image": "test", "force": True}
+        await client.call_tool("list_networks", {"filters": {}})
+        assert docker_client.call("networks.list") == {"filters": {}}
         await client.call_tool("list_networks", {"filters": {"label": ["x=y"]}})
         assert docker_client.call("networks.list") == {"filters": {"label": ["x=y"]}}
         await client.call_tool("create_network", {"name": "n", "internal": True})
