@@ -1,5 +1,7 @@
 # 🐋 Docker MCP server
 
+[![MCP Shield](https://img.shields.io/badge/MCP_Shield-F_(39)-red)](https://github.com/thuggeelya/mcp-shield)
+
 An MCP server for managing Docker with natural language!
 
 ## 🪩 What can it do?
