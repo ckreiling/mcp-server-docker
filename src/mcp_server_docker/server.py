@@ -66,6 +66,16 @@ ContainerLabels = Annotated[
     dict[str, str] | list[str] | None, Field(description="Container labels")
 ]
 AutoRemove = Annotated[bool, Field(description="Automatically remove the container")]
+Format = Annotated[
+    Literal["summary", "full"],
+    Field(
+        description=(
+            "Output verbosity. `summary` returns a compact `docker ps`-style row "
+            "(no health-check logs, labels or image digests); `full` returns the "
+            "inspect-level object. Defaults to `summary` for listings."
+        )
+    ),
+]
 
 
 def _client(ctx: Context[AppContext]) -> docker.DockerClient:
@@ -239,9 +249,10 @@ def list_containers(
     filters: Annotated[
         ListContainersFilters | None, Field(description="Filter containers")
     ] = None,
+    format: Format = "summary",
 ) -> list[dict[str, Any]]:
     return [
-        docker_to_dict(container)
+        docker_to_dict(container, format=format)
         for container in _client(ctx).containers.list(
             all=all, filters=filters.model_dump() if filters else None
         )
@@ -491,9 +502,10 @@ def list_images(
     filters: Annotated[
         ListImagesFilters | None, Field(description="Filter images")
     ] = None,
+    format: Format = "summary",
 ) -> list[dict[str, Any]]:
     return [
-        docker_to_dict(image)
+        docker_to_dict(image, format=format)
         for image in _client(ctx).images.list(
             name=name, all=all, filters=filters.model_dump() if filters else None
         )
@@ -623,8 +635,12 @@ def remove_network(
         read_only_hint=True, idempotent_hint=True, open_world_hint=False
     ),
 )
-def list_volumes(ctx: Context[AppContext]) -> list[dict[str, Any]]:
-    return [docker_to_dict(volume) for volume in _client(ctx).volumes.list()]
+def list_volumes(
+    ctx: Context[AppContext], format: Format = "summary"
+) -> list[dict[str, Any]]:
+    return [
+        docker_to_dict(volume, format=format) for volume in _client(ctx).volumes.list()
+    ]
 
 
 @app.tool(
