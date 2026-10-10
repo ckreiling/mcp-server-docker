@@ -421,6 +421,20 @@ def start_container(
     return docker_to_dict(container)
 
 
+MAX_LOG_TEXT_BYTES = 20 * 1024
+
+
+def _bounded_log_output(raw: bytes) -> dict[str, Any]:
+    """Return a bounded text suffix with original size and truncation evidence."""
+    total = len(raw)
+    selected = raw[-MAX_LOG_TEXT_BYTES:] if total > MAX_LOG_TEXT_BYTES else raw
+    return {
+        "logs": selected.decode("utf-8", errors="replace").split("\n"),
+        "truncated": total > MAX_LOG_TEXT_BYTES,
+        "bytes": total,
+    }
+
+
 @app.tool(
     description="Fetch logs for a Docker container",
     annotations=ToolAnnotations(
@@ -434,14 +448,9 @@ def fetch_container_logs(
         int | Literal["all"],
         Field(description="Number of lines to show from the end"),
     ] = 100,
-) -> dict[str, list[str]]:
-    return {
-        "logs": _client(ctx)
-        .containers.get(container_id)
-        .logs(tail=tail)
-        .decode("utf-8")
-        .split("\n")
-    }
+) -> dict[str, Any]:
+    raw = _client(ctx).containers.get(container_id).logs(tail=tail)
+    return _bounded_log_output(raw)
 
 
 @app.tool(
