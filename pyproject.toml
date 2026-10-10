@@ -6,7 +6,6 @@ readme = "README.md"
 dependencies = [
     "docker>=7.1.0",
     "mcp>=2,<3",
-    "paramiko>=3.5.1,<4.0",
     "pydantic>=2.12",
 ]
 license = { file = "LICENSE" }
@@ -18,6 +17,11 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3.12",
 ]
+
+[project.optional-dependencies]
+# SSH transport uses Paramiko 5+, which removes deprecated SHA-1 algorithms.
+# Install mcp-server-docker[ssh] when using DOCKER_HOST=ssh://...
+ssh = ["paramiko>=5.0.0,<6.0"]
 
 [project.urls]
 Repository = "https://github.com/ckreiling/mcp-server-docker"

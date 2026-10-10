@@ -196,13 +196,18 @@ details, see
 
 This MCP server can connect to a remote Docker daemon over SSH.
 
-Simply set a `ssh://` host URL in the MCP server definition:
+For SSH access, install the optional `ssh` extra. The default package
+contains the Docker SDK but intentionally does not install Paramiko. The SSH
+extra requires Paramiko 5+, which removed SHA-1-only SSH algorithms: older
+servers that cannot negotiate modern keys or key exchange may need updating.
 
-```
+```json
 "mcpServers": {
   "mcp-server-docker": {
     "command": "uvx",
     "args": [
+      "--from",
+      "mcp-server-docker[ssh]",
       "mcp-server-docker"
     ],
     "env": {
@@ -211,6 +216,11 @@ Simply set a `ssh://` host URL in the MCP server definition:
   }
 }
 ```
+
+For local Docker sockets or standard remote TCP endpoints, the default
+`uvx mcp-server-docker` command remains unchanged. Docker images built with
+the default dependencies do not include SSH support; an SSH-capable image must
+be built explicitly with the extra and tested against its target server.
 
 ## 💻 Development
 
