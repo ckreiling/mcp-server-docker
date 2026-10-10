@@ -158,6 +158,11 @@ async def test_tools_have_flat_schemas_and_container_call_semantics(
         assert docker_client.call("containers.create")["environment"] == {"X": "1"}
         await client.call_tool("run_container", {"image": "alpine", "detach": False})
         assert docker_client.call("containers.run")["detach"] is False
+        recreate = next(
+            tool for tool in tools.tools if tool.name == "recreate_container"
+        )
+        assert "preserve_existing" in recreate.input_schema["properties"]
+        assert "preserve_existing" not in recreate.input_schema.get("required", [])
         await client.call_tool("recreate_container", {"image": "alpine", "name": "old"})
         assert docker_client.call("containers.get") == "old"
         assert [name for name, _ in docker_client.calls[-4:]] == [

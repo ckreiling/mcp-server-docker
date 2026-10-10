@@ -143,6 +143,24 @@ Read either URI with a Docker container ID or name.
 - `stop_container`
 - `remove_container`
 
+#### Recreating a container safely
+
+`recreate_container` retains its original stop/remove/recreate behavior
+by default, where you supply the desired replacement settings. The optional
+`preserve_existing=true` mode instead inspects an existing container
+(`container_id` or `name`) and recreates it with the given replacement
+`image`, retaining supported environment, mounts/volume identity, networks,
+labels, healthcheck, restart policy and prior running state. The replacement
+image must be locally available *before* the original is stopped. Supplying
+other replacement settings alongside this mode is rejected rather than
+silently overwriting inspected configuration.
+
+The mode is **not atomic**: container IDs change, and automatic rollback is
+best effort if the original image, network or volume is no longer available.
+Back up critical data and establish a separate restore path before use.
+Compose-managed containers should normally be replaced through their
+own Compose deployment workflow, not this standalone recreation tool.
+
 ### Images
 
 - `list_images`
