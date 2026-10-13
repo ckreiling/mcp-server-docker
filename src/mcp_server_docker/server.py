@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 
 import docker
+from docker.models.containers import Container
 from mcp.server import MCPServer
 from mcp.server.mcpserver import Context
 from mcp.types import ToolAnnotations
@@ -70,6 +71,32 @@ AutoRemove = Annotated[bool, Field(description="Automatically remove the contain
 
 def _client(ctx: Context[AppContext]) -> docker.DockerClient:
     return ctx.request_context.lifespan_context.docker
+
+
+MAX_ATTACHED_TEXT_BYTES = 20 * 1024
+
+
+def _run_result(value: Any, *, detach: bool) -> dict[str, Any]:
+    """Normalize Docker SDK run results for attached and detached execution."""
+    if isinstance(value, Container):
+        return docker_to_dict(value)
+    if detach:
+        raise TypeError(f"Detached Docker run returned unexpected type: {type(value)}")
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        raw = bytes(value)
+        total = len(raw)
+        # Bound the response suffix, matching fetch_container_logs in PR #71.
+        # Docker SDK input retrieval remains eager; this is not a memory cap.
+        selected = (
+            raw[-MAX_ATTACHED_TEXT_BYTES:] if total > MAX_ATTACHED_TEXT_BYTES else raw
+        )
+        return {
+            "mode": "attached",
+            "output": selected.decode("utf-8", errors="replace"),
+            "truncated": total > MAX_ATTACHED_TEXT_BYTES,
+            "bytes": total,
+        }
+    raise TypeError(f"Attached Docker run returned unexpected type: {type(value)}")
 
 
 @asynccontextmanager
@@ -345,21 +372,20 @@ def run_container(
         bool, Field(description="Automatically remove the container")
     ] = False,
 ) -> dict[str, Any]:
-    return docker_to_dict(
-        _client(ctx).containers.run(
-            image=image,
-            detach=detach,
-            name=name,
-            entrypoint=entrypoint,
-            command=command,
-            network=network,
-            environment=environment,
-            ports=ports,
-            volumes=volumes,
-            labels=labels,
-            auto_remove=auto_remove,
-        )
+    result = _client(ctx).containers.run(
+        image=image,
+        detach=detach,
+        name=name,
+        entrypoint=entrypoint,
+        command=command,
+        network=network,
+        environment=environment,
+        ports=ports,
+        volumes=volumes,
+        labels=labels,
+        auto_remove=auto_remove,
     )
+    return _run_result(result, detach=detach)
 
 
 @app.tool(
