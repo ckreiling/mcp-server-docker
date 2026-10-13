@@ -73,6 +73,9 @@ def _client(ctx: Context[AppContext]) -> docker.DockerClient:
     return ctx.request_context.lifespan_context.docker
 
 
+MAX_ATTACHED_TEXT_BYTES = 20 * 1024
+
+
 def _run_result(value: Any, *, detach: bool) -> dict[str, Any]:
     """Normalize Docker SDK run results for attached and detached execution."""
     if isinstance(value, Container):
@@ -80,9 +83,18 @@ def _run_result(value: Any, *, detach: bool) -> dict[str, Any]:
     if detach:
         raise TypeError(f"Detached Docker run returned unexpected type: {type(value)}")
     if isinstance(value, (bytes, bytearray, memoryview)):
+        raw = bytes(value)
+        total = len(raw)
+        # Bound the response suffix, matching fetch_container_logs in PR #71.
+        # Docker SDK input retrieval remains eager; this is not a memory cap.
+        selected = (
+            raw[-MAX_ATTACHED_TEXT_BYTES:] if total > MAX_ATTACHED_TEXT_BYTES else raw
+        )
         return {
             "mode": "attached",
-            "output": bytes(value).decode("utf-8", errors="replace"),
+            "output": selected.decode("utf-8", errors="replace"),
+            "truncated": total > MAX_ATTACHED_TEXT_BYTES,
+            "bytes": total,
         }
     raise TypeError(f"Attached Docker run returned unexpected type: {type(value)}")
 

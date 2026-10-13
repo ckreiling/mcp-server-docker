@@ -246,3 +246,7 @@ After setting up devbox you can configure your Claude MCP config to use it:
     ]
   },
 ```
+
+### Attached execution output
+
+`run_container(detach=false)` returns `mode: "attached"`, a decoded `output` string, the original raw `bytes` count and a `truncated` flag. The response contains at most the last 20 KiB of raw output before UTF-8 decoding. Invalid UTF-8, including a sequence split at the truncation boundary, uses replacement characters. This bounds the response; the Docker SDK still retrieves attached output eagerly, so it does not bound input transport or process memory. Detached execution retains its container metadata response.

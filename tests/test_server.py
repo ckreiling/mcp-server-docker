@@ -158,11 +158,15 @@ async def test_tools_have_flat_schemas_and_container_call_semantics(
         )
         assert docker_client.call("containers.create")["image"] == "alpine"
         assert docker_client.call("containers.create")["environment"] == {"X": "1"}
-        attached = await client.call_tool("run_container", {"image": "alpine", "detach": False})
+        attached = await client.call_tool(
+            "run_container", {"image": "alpine", "detach": False}
+        )
         assert docker_client.call("containers.run")["detach"] is False
         assert attached.structured_content == {
             "mode": "attached",
             "output": "attached\ufffd\n",
+            "truncated": False,
+            "bytes": 10,
         }
         await client.call_tool("recreate_container", {"image": "alpine", "name": "old"})
         assert docker_client.call("containers.get") == "old"
@@ -310,3 +314,24 @@ async def test_production_stdio_command_lists_tools():
     async with Client(stdio_client(params), raise_exceptions=True) as client:
         tools = await client.list_tools()
     assert "list_containers" in {tool.name for tool in tools.tools}
+
+
+@pytest.mark.parametrize("factory", [bytes, bytearray, memoryview])
+@pytest.mark.parametrize("size", [0, 20480, 20481, 40000])
+def test_attached_output_preserves_bounded_suffix_and_original_size(factory, size):
+    raw = b"x" * size
+    result = server_module._run_result(factory(raw), detach=False)
+    assert result == {
+        "mode": "attached",
+        "output": raw[-20480:].decode("utf-8", errors="replace"),
+        "truncated": size > 20480,
+        "bytes": size,
+    }
+
+
+def test_attached_output_replaces_a_partial_utf8_sequence_at_the_bound():
+    raw = b"prefix" + "€".encode() + b"x" * 20479
+    result = server_module._run_result(raw, detach=False)
+    assert result["output"] == "\ufffd" + "x" * 20479
+    assert result["truncated"] is True
+    assert result["bytes"] == len(raw)
