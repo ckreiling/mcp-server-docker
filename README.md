@@ -151,6 +151,12 @@ Read either URI with a Docker container ID or name.
 - `build_image`
 - `remove_image`
 
+### Buildx
+
+- `buildx_list`
+- `buildx_history`
+- `buildx_logs`
+
 ### Networks
 
 - `list_networks`
