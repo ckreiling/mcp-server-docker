@@ -134,6 +134,7 @@ def docker_cli(monkeypatch):
         return cli.responses.pop(0)
 
     monkeypatch.setattr(server_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(server_module.shutil, "which", lambda _name: "/usr/bin/docker")
     return cli
 
 
