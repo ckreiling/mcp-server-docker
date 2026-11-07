@@ -619,6 +619,29 @@ def buildx_history(
 
 
 @app.tool(
+    description="Show the logs of a Docker Buildx build record",
+    annotations=ToolAnnotations(
+        read_only_hint=True, idempotent_hint=True, open_world_hint=False
+    ),
+)
+def buildx_logs(
+    ref: Annotated[str, Field(description="Build record reference")],
+    builder: Annotated[
+        str | None, Field(description="Builder instance to query")
+    ] = None,
+    progress: Annotated[
+        Literal["plain", "rawjson", "tty"],
+        Field(description="Progress output type"),
+    ] = "plain",
+) -> str:
+    args = ["buildx", "history", "logs", ref]
+    if builder is not None:
+        args += ["--builder", builder]
+    args += ["--progress", progress]
+    return _run_docker(*args)
+
+
+@app.tool(
     description="List Docker networks",
     annotations=ToolAnnotations(
         read_only_hint=True, idempotent_hint=True, open_world_hint=False

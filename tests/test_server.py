@@ -201,12 +201,45 @@ async def test_buildx_history_calls_buildx_with_optional_builder(server, docker_
 
 
 @pytest.mark.anyio
+async def test_buildx_logs_returns_text_and_passes_options(server, docker_cli):
+    async with Client(server, raise_exceptions=True) as client:
+        docker_cli.responses.append(FakeProcess(stdout="step 1\nstep 2\n"))
+        result = await client.call_tool("buildx_logs", {"ref": "abc"})
+        assert result.content[0].text == "step 1\nstep 2\n"
+        assert docker_cli.calls[-1][1:] == [
+            "buildx",
+            "history",
+            "logs",
+            "abc",
+            "--progress",
+            "plain",
+        ]
+
+        docker_cli.responses.append(FakeProcess(stdout="trace\n"))
+        result = await client.call_tool(
+            "buildx_logs",
+            {"ref": "abc", "builder": "sbx", "progress": "rawjson"},
+        )
+        assert result.content[0].text == "trace\n"
+        assert docker_cli.calls[-1][1:] == [
+            "buildx",
+            "history",
+            "logs",
+            "abc",
+            "--builder",
+            "sbx",
+            "--progress",
+            "rawjson",
+        ]
+
+
+@pytest.mark.anyio
 async def test_tools_have_flat_schemas_and_container_call_semantics(
     server, docker_client
 ):
     async with Client(server, raise_exceptions=True) as client:
         tools = await client.list_tools()
-        assert len(tools.tools) == 21
+        assert len(tools.tools) == 22
         buildx_list_tool = next(
             tool for tool in tools.tools if tool.name == "buildx_list"
         )
