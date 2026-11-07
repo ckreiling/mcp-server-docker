@@ -173,12 +173,40 @@ async def test_buildx_reports_missing_docker_cli(server, monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_buildx_history_calls_buildx_with_optional_builder(server, docker_cli):
+    async with Client(server, raise_exceptions=True) as client:
+        docker_cli.responses.append(FakeProcess(stdout='[{"name": "build-1"}]'))
+        result = await client.call_tool("buildx_history", {})
+        assert result.structured_content == {"result": [{"name": "build-1"}]}
+        assert docker_cli.calls[-1][1:] == [
+            "buildx",
+            "history",
+            "ls",
+            "--format",
+            "json",
+        ]
+
+        docker_cli.responses.append(FakeProcess(stdout=""))
+        result = await client.call_tool("buildx_history", {"builder": "sbx"})
+        assert result.structured_content == {"result": []}
+        assert docker_cli.calls[-1][1:] == [
+            "buildx",
+            "history",
+            "ls",
+            "--format",
+            "json",
+            "--builder",
+            "sbx",
+        ]
+
+
+@pytest.mark.anyio
 async def test_tools_have_flat_schemas_and_container_call_semantics(
     server, docker_client
 ):
     async with Client(server, raise_exceptions=True) as client:
         tools = await client.list_tools()
-        assert len(tools.tools) == 20
+        assert len(tools.tools) == 21
         buildx_list_tool = next(
             tool for tool in tools.tools if tool.name == "buildx_list"
         )

@@ -602,6 +602,23 @@ def buildx_list() -> list[dict[str, Any]]:
 
 
 @app.tool(
+    description="List Docker Buildx build records",
+    annotations=ToolAnnotations(
+        read_only_hint=True, idempotent_hint=True, open_world_hint=False
+    ),
+)
+def buildx_history(
+    builder: Annotated[
+        str | None, Field(description="Builder instance to query")
+    ] = None,
+) -> list[dict[str, Any]]:
+    args = ["buildx", "history", "ls", "--format", "json"]
+    if builder is not None:
+        args += ["--builder", builder]
+    return _parse_json_stream(_run_docker(*args))
+
+
+@app.tool(
     description="List Docker networks",
     annotations=ToolAnnotations(
         read_only_hint=True, idempotent_hint=True, open_world_hint=False
