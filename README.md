@@ -157,6 +157,11 @@ Read either URI with a Docker container ID or name.
 - `buildx_history`
 - `buildx_logs`
 
+These tools invoke the `docker` CLI, so the `docker` binary (with the Buildx
+plugin) must be available on `PATH`. The supplied container image does not
+include the Docker CLI, so the Buildx tools are only usable when the server
+runs where the CLI is installed.
+
 ### Networks
 
 - `list_networks`
