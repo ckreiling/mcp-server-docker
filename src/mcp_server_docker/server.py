@@ -1,6 +1,8 @@
 """MCPServer v2 implementation for Docker."""
 
 import json
+import shutil
+import subprocess
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -70,6 +72,35 @@ AutoRemove = Annotated[bool, Field(description="Automatically remove the contain
 
 def _client(ctx: Context[AppContext]) -> docker.DockerClient:
     return ctx.request_context.lifespan_context.docker
+
+
+def _run_docker(*args: str) -> str:
+    """Run the docker CLI and return stdout, raising on failure."""
+    executable = shutil.which("docker")
+    if executable is None:
+        raise RuntimeError("docker CLI not found on PATH")
+    result = subprocess.run(
+        [executable, *args], capture_output=True, text=True, check=False
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or f"docker {' '.join(args)} failed")
+    return result.stdout
+
+
+def _parse_json_stream(output: str) -> list[dict[str, Any]]:
+    """Parse buildx output from a JSON document or a JSON-lines stream."""
+    text = output.strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        data = [json.loads(line) for line in text.splitlines() if line.strip()]
+    if isinstance(data, dict):
+        return [data]
+    if isinstance(data, list) and all(isinstance(item, dict) for item in data):
+        return data
+    raise RuntimeError("unexpected buildx JSON output")
 
 
 @asynccontextmanager
@@ -558,6 +589,16 @@ def remove_image(
 ) -> dict[str, str]:
     _client(ctx).images.remove(image=image, force=force)
     return {"status": "removed", "image": image}
+
+
+@app.tool(
+    description="List Docker Buildx builder instances",
+    annotations=ToolAnnotations(
+        read_only_hint=True, idempotent_hint=True, open_world_hint=False
+    ),
+)
+def buildx_list() -> list[dict[str, Any]]:
+    return _parse_json_stream(_run_docker("buildx", "ls", "--format", "json"))
 
 
 @app.tool(

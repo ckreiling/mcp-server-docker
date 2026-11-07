@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Any, ClassVar
 
 import docker
@@ -117,13 +118,73 @@ def server(docker_client):
     return app
 
 
+class FakeProcess:
+    def __init__(self, stdout: str = "", stderr: str = "", returncode: int = 0):
+        self.stdout = stdout
+        self.stderr = stderr
+        self.returncode = returncode
+
+
+@pytest.fixture
+def docker_cli(monkeypatch):
+    cli = SimpleNamespace(calls=[], responses=[])
+
+    def fake_run(command, **_kwargs):
+        cli.calls.append(command)
+        return cli.responses.pop(0)
+
+    monkeypatch.setattr(server_module.subprocess, "run", fake_run)
+    return cli
+
+
+@pytest.mark.anyio
+async def test_buildx_list_parses_json_and_json_lines(server, docker_cli):
+    async with Client(server, raise_exceptions=True) as client:
+        docker_cli.responses.append(FakeProcess(stdout='[{"name": "a"}]'))
+        result = await client.call_tool("buildx_list", {})
+        assert result.structured_content == {"result": [{"name": "a"}]}
+        assert docker_cli.calls[-1][1:] == ["buildx", "ls", "--format", "json"]
+
+        docker_cli.responses.append(
+            FakeProcess(stdout='{"name": "a"}\n{"name": "b"}\n')
+        )
+        result = await client.call_tool("buildx_list", {})
+        assert result.structured_content == {"result": [{"name": "a"}, {"name": "b"}]}
+
+        docker_cli.responses.append(FakeProcess(stdout=""))
+        result = await client.call_tool("buildx_list", {})
+        assert result.structured_content == {"result": []}
+
+        docker_cli.responses.append(
+            FakeProcess(stdout="", stderr="boom\n", returncode=1)
+        )
+        result = await client.call_tool("buildx_list", {})
+        assert result.is_error
+        assert "boom" in result.content[0].text
+
+
+@pytest.mark.anyio
+async def test_buildx_reports_missing_docker_cli(server, monkeypatch):
+    monkeypatch.setattr(server_module.shutil, "which", lambda _name: None)
+    async with Client(server, raise_exceptions=True) as client:
+        result = await client.call_tool("buildx_list", {})
+    assert result.is_error
+    assert "docker CLI not found" in result.content[0].text
+
+
 @pytest.mark.anyio
 async def test_tools_have_flat_schemas_and_container_call_semantics(
     server, docker_client
 ):
     async with Client(server, raise_exceptions=True) as client:
         tools = await client.list_tools()
-        assert len(tools.tools) == 19
+        assert len(tools.tools) == 20
+        buildx_list_tool = next(
+            tool for tool in tools.tools if tool.name == "buildx_list"
+        )
+        assert buildx_list_tool.annotations.read_only_hint
+        assert buildx_list_tool.annotations.idempotent_hint
+        assert buildx_list_tool.annotations.open_world_hint is False
         create = next(tool for tool in tools.tools if tool.name == "create_container")
         assert create.input_schema["required"] == ["image"]
         assert "ctx" not in create.input_schema["properties"]
